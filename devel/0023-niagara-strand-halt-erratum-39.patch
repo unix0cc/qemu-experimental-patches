@@ -1,0 +1,186 @@
+From 64324d6196e43a0f4fe6f805ed8a9e6aa9333851 Mon Sep 17 00:00:00 2001
+From: dpim <dpim_dpim@proton.me>
+Date: Wed, 9 Sep 2026 22:45:49 +0200
+Subject: [PATCH] target/sparc: implement the strand halt on wr-form %asr26
+ (erratum #39)
+
+0010 (asr26-strand-status-write) added the missing wr-form decode for
+STRAND_STS_REG, reusing the existing rdpr/wrpr-form helper (do_wrssr).
+That helper only stored env->ssr -- it never actually halted the
+strand on the write that clears .active, because upstream's do_wrssr
+was a plain register store with no side effect at all.
+
+The result: cpu_yield (all plat_halt_strand() does) returned
+immediately without ever setting cs->halted, so a guest idle loop that
+means to sleep instead spins through a hypercall per iteration, at
+100% host CPU, indefinitely.
+
+There is a second, independent reason the halt never took effect even
+where it was checked for: %hver is never assigned anywhere in QEMU, so
+rdhpr %hver reads 0, and the Niagara erratum #39 guard in
+plat_halt_strand() (which gates the halt write on the hv's own view of
+the CPU version) always sees the oldest possible part and skips the
+halt outright. Giving %hver the same value as %ver makes the guard's
+mask field visible at all -- a full fix would also need UA2005's
+maxgl field, which %ver does not carry, but this is enough for our
+Ontario/T2 hv to stop tripping the guard.
+
+Fix, in two parts:
+  - target/sparc/cpu.c: assign env->hver at reset, so the erratum #39
+    guard sees a real part instead of 0.
+  - target/sparc/{cpu.h,helper.h,int64_helper.c,translate.c}: give
+    do_wrssr a real TCG helper (helper_wrssr) that masks the write to
+    the two actually-writable fields (active, spec_en) and, when
+    active clears, halts the strand exactly like helper_power_down()
+    does -- advance pc/npc past the instruction, set cs->halted, and
+    leave the TCG loop.
+
+Tied to our own hv, not a generic Solaris/QEMU gap: found because our
+T2/Ontario hypervisor's plat_halt_strand() (hcall_cpu.s) is the first
+code in this project to exercise the wr-form write and the erratum #39
+guard together. Idle-strand boots hang in the hv's own
+watchdog_inf_loop without it. See devel/README, "Patches this stack
+needs only because of our own hv" for the pattern across 0003/0010/0023.
+
+AI-assisted.
+---
+ target/sparc/cpu.c          |  9 +++++++++
+ target/sparc/cpu.h          | 15 +++++++++++++++
+ target/sparc/helper.h       |  1 +
+ target/sparc/int64_helper.c | 37 +++++++++++++++++++++++++++++++++++++
+ target/sparc/translate.c    |  9 ++++++++-
+ 5 files changed, 70 insertions(+), 1 deletion(-)
+
+diff --git a/target/sparc/cpu.c b/target/sparc/cpu.c
+index 13ebb122a3..d2342ce98c 100644
+--- a/target/sparc/cpu.c
++++ b/target/sparc/cpu.c
+@@ -877,6 +877,15 @@ static void sparc_cpu_realizefn(DeviceState *dev, Error **errp)
+     env->maxtl = env->def.maxtl;
+     env->version |= env->def.maxtl << 8;
+     env->version |= env->def.nwindows - 1;
++    /*
++     * %hver is never assigned anywhere in QEMU, so rdhpr %hver reads 0 and
++     * every hypervisor version check sees the oldest possible part -- which
++     * is why the Niagara erratum #39 guard in plat_halt_strand() always
++     * skips the halt. Give it the same value as %ver so the mask field
++     * above is visible at all. (A real fix would also need UA2005's maxgl
++     * field, which %ver does not carry.)
++     */
++    env->hver = env->version;
+ #endif
+ 
+     /*
+diff --git a/target/sparc/cpu.h b/target/sparc/cpu.h
+index 94680008fa..bf0375b6d1 100644
+--- a/target/sparc/cpu.h
++++ b/target/sparc/cpu.h
+@@ -121,6 +121,21 @@ enum {
+ #define IQUEUE_RES_TAIL  5      /* 0x3e8 */
+ #define IQUEUE_NRES_HEAD 6      /* 0x3f0 */
+ #define IQUEUE_NRES_TAIL 7      /* 0x3f8 */
++
++/*
++ * Strand Status Register, STRAND_STS_REG (ASR 0x1a). UltraSPARC T1
++ * Supplement, table 3-3: a per-strand hyperprivileged register carrying
++ * control bits for stranded operation plus read-only strand status.
++ *
++ * Only two fields are writable. Everything else -- the strand and core ids
++ * at 12:8, the per-strand fsm states at 35:16, the wait masks at 51:40 --
++ * is read-only status this model has nothing to report for, and reads as
++ * zero. active is described as "controls whether strand is active; 1 =
++ * active, 0 = halted or idle", and is the only one with an effect here.
++ */
++#define SSR_ACTIVE       (1ULL << 0)
++#define SSR_SPEC_EN      (1ULL << 2)
++#define SSR_WMASK        (SSR_ACTIVE | SSR_SPEC_EN)
+ #endif
+ 
+ #define PSR_NEG_SHIFT 23
+diff --git a/target/sparc/helper.h b/target/sparc/helper.h
+index 3a7f7dc129..a40f14c773 100644
+--- a/target/sparc/helper.h
++++ b/target/sparc/helper.h
+@@ -8,6 +8,7 @@ DEF_HELPER_1(power_down, void, env)
+ DEF_HELPER_FLAGS_2(wrpil, TCG_CALL_NO_RWG, void, env, tl)
+ DEF_HELPER_2(wrgl, void, env, tl)
+ DEF_HELPER_2(wrpstate, void, env, tl)
++DEF_HELPER_2(wrssr, void, env, tl)
+ DEF_HELPER_1(done, void, env)
+ DEF_HELPER_1(retry, void, env)
+ DEF_HELPER_FLAGS_1(flushw, TCG_CALL_NO_WG, void, env)
+diff --git a/target/sparc/int64_helper.c b/target/sparc/int64_helper.c
+index f3628b9463..af8bf4875a 100644
+--- a/target/sparc/int64_helper.c
++++ b/target/sparc/int64_helper.c
+@@ -20,6 +20,7 @@
+ #include "qemu/osdep.h"
+ #include "qemu/main-loop.h"
+ #include "cpu.h"
++#include "accel/tcg/cpu-loop.h"
+ #include "exec/cpu-common.h"
+ #include "exec/helper-proto.h"
+ #include "exec/log.h"
+@@ -376,3 +377,39 @@ void helper_write_softint(CPUSPARCState *env, uint64_t value)
+         trace_int_helper_write_softint(env->softint);
+     }
+ }
++
++/*
++ * Write to STRAND_STS_REG (ASR 0x1a, and the rdpr/wrpr form of the same
++ * register). Only active and spec_en are writable -- UltraSPARC T1
++ * Supplement, table 3-3 -- so the rest of the guest's value is discarded
++ * rather than stored, which keeps the read side from inventing strand
++ * status this model does not have.
++ *
++ * Clearing active halts the strand. That is not decorative: the hypervisor
++ * idles a strand exactly this way (plat_halt_strand(), which is all
++ * cpu_yield does), and expects not to execute again until an interrupt
++ * brings it back. Without the halt the write is a no-op, cpu_yield returns
++ * immediately, and a guest idle loop that means to sleep spins through a
++ * hypercall per iteration instead, at full host CPU, indefinitely.
++ *
++ * The pc/npc advance mirrors helper_power_down(): the halt takes effect at
++ * the instruction after this one, so waking resumes past the write rather
++ * than re-executing it.
++ */
++void helper_wrssr(CPUSPARCState *env, target_ulong value)
++{
++    env->ssr = (env->ssr & ~(uint64_t)SSR_WMASK) | (value & SSR_WMASK);
++
++#if !defined(CONFIG_USER_ONLY)
++    if (!(env->ssr & SSR_ACTIVE)) {
++        CPUState *cs = env_cpu(env);
++
++        env->pc = env->npc;
++        env->npc = env->pc + 4;
++
++        cs->halted = 1;
++        cs->exception_index = EXCP_HLT;
++        cpu_loop_exit(cs);
++    }
++#endif
++}
+diff --git a/target/sparc/translate.c b/target/sparc/translate.c
+index 8da79927f5..7e03944b05 100644
+--- a/target/sparc/translate.c
++++ b/target/sparc/translate.c
+@@ -3623,7 +3623,14 @@ TRANS(WRPR_gl, GL, do_wr_special, a, supervisor(dc), do_wrgl)
+ /* UA2005 strand status */
+ static void do_wrssr(DisasContext *dc, TCGv src)
+ {
+-    tcg_gen_st_tl(src, tcg_env, env64_field_offsetof(ssr));
++    /*
++     * Clearing active halts the strand, so the helper leaves the cpu loop
++     * and must find the pc already saved; it resumes at the instruction
++     * after this one when an interrupt brings the strand back.
++     */
++    save_state(dc);
++    gen_helper_wrssr(tcg_env, src);
++    dc->base.is_jmp = DISAS_EXIT;
+ }
+ 
+ TRANS(WRPR_strand_status, HYPV, do_wr_special, a, hypervisor(dc), do_wrssr)
+-- 
+2.43.0
+

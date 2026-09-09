@@ -30,3 +30,47 @@ Contents
     QEMU did not decode. Required to run a self-built hypervisor at all: such a
     build hangs on its first PRINT(). Harmless to existing setups -- the stock
     blob is a non-DEBUG build and writes nothing to the port.
+
+0023-niagara-strand-halt-erratum-39.patch
+    Implements the strand halt on the wr-form write to %asr26 (STRAND_STS_REG):
+    do_wrssr gets a real TCG helper that masks the write to the two writable
+    fields and, when .active clears, actually halts the strand (cs->halted = 1)
+    instead of being a plain register store with no side effect. Also assigns
+    %hver at reset (never assigned anywhere in stock QEMU), because the Niagara
+    erratum #39 guard in plat_halt_strand() checks %hver before issuing the write
+    at all and always saw 0 -- the oldest possible part -- and skipped the halt
+    outright. Needs 0010 (test/, asr26-strand-status-write) applied first: that
+    one adds the missing wr-form decode entry, this one is what makes the write
+    it decodes actually do something. Without both, an idle-strand boot spins
+    cpu_yield at 100% host CPU forever instead of halting.
+
+Patches this stack needs only because of our own hv
+-----------------------------------------------------
+Three patches across this stack exist because our own T2/Ontario hypervisor
+build is the first thing to exercise a given upstream QEMU code path, not
+because of a generic Solaris-on-sun4v or QEMU bug. Traceable here since they
+otherwise look unrelated and are scattered across devel/ and test/:
+
+  0003 (this directory)      hv's own PRINT() console -- hangs on the first
+                              call without it. Needed by any self-built hv,
+                              not by the stock blob.
+  0010 (test/)                the wr-form %asr26 write our hv's
+                              plat_halt_strand() (hcall_cpu.s) uses to idle a
+                              strand -- traps illegal_instruction without it.
+  0023 (this directory)      the erratum #39 guard in that same
+                              plat_halt_strand(), and the halt behaviour behind
+                              the write 0010 only decodes.
+
+0010 and 0023 are really one mechanism split across two patches for a
+narrower reason: 0010 landed first, before the halt itself was known to be
+missing -- see [[cpu-yield-strand-halt-not-implemented]] and
+[[qemu-hver-never-assigned]] in the notes repo for how that gap was found and
+narrowed down. Apply 0010 before 0023; 0023 depends on the decode entry 0010
+adds and does nothing without it.
+
+The common thread: none of these three are things a stock or third-party
+sun4v guest/hv combination would ever hit. They surface specifically because
+this project builds its own hypervisor from source (OpenSPARC T2/Ontario) and
+runs it under QEMU rather than only running prebuilt Sun/Oracle firmware --
+anyone doing the same will need this exact set, and 0003/0010/0023 is the
+reason devel/ exists as a category separate from upstream/ at all.
