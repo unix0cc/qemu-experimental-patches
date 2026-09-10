@@ -44,9 +44,30 @@ Contents
     it decodes actually do something. Without both, an idle-strand boot spins
     cpu_yield at 100% host CPU forever instead of halting.
 
+0024-niagara-wake-halted-strand-on-pending-irq.patch
+    Fixes sparc_cpu_has_work() so a strand halted by 0023 can wake again. The
+    upstream function (untouched since 2013, and never reached before 0023
+    because nothing else halts a SPARC64 strand) only asks whether an
+    interrupt is *deliverable right now* -- CPU_INTERRUPT_HARD raised and
+    interrupts enabled. A halted strand wakes on a *pending* interrupt
+    instead: PSTATE.IE gates trap delivery once the strand resumes, not
+    whether the halt may end. The halt is routinely entered with IE = 0 (an
+    ordinary check-then-sleep idle loop), so a %stick tick that fires and is
+    correctly deferred by cpu_check_irqs() in the instant before the halt
+    leaves SOFTINT.STIMER set with nothing to deliver it -- has_work()
+    returns false, the strand is never re-evaluated, the one-shot %stick_cmpr
+    is never re-armed, and it parks forever. This is "Signature B" in the
+    notes repo ([[signature-b-clean-idle-stall]]): caught live and
+    simultaneously on two guests, identical state, permanently frozen. Fix:
+    when cs->halted, report work if any raw source is pending (iqueue
+    non-empty, pil_in, softint, or CPU_INTERRUPT_HARD). Needs 0004
+    (test/, mondo-queues-asi-queue) for env->iqueue and the IQUEUE_* offsets,
+    and 0023. A >9 h idle that froze deterministically before now stays
+    healthy on both the cmd646/IDE and mptsas/PCIe stacks.
+
 Patches this stack needs only because of our own hv
 -----------------------------------------------------
-Three patches across this stack exist because our own T2/Ontario hypervisor
+Four patches across this stack exist because our own T2/Ontario hypervisor
 build is the first thing to exercise a given upstream QEMU code path, not
 because of a generic Solaris-on-sun4v or QEMU bug. Traceable here since they
 otherwise look unrelated and are scattered across devel/ and test/:
@@ -60,17 +81,21 @@ otherwise look unrelated and are scattered across devel/ and test/:
   0023 (this directory)      the erratum #39 guard in that same
                               plat_halt_strand(), and the halt behaviour behind
                               the write 0010 only decodes.
+  0024 (this directory)      the wake half: sparc_cpu_has_work() must check
+                              raw pending sources, not deliverability, or a
+                              strand halted by 0023 never resumes.
 
-0010 and 0023 are really one mechanism split across two patches for a
-narrower reason: 0010 landed first, before the halt itself was known to be
-missing -- see [[cpu-yield-strand-halt-not-implemented]] and
-[[qemu-hver-never-assigned]] in the notes repo for how that gap was found and
-narrowed down. Apply 0010 before 0023; 0023 depends on the decode entry 0010
-adds and does nothing without it.
+0010/0023/0024 are one mechanism -- decode the halt write, make it halt,
+make the halt wake -- split across three patches by how they were found:
+0010 landed first, before the halt itself was known to be missing; 0024 last,
+after Signature B was root-caused. See [[cpu-yield-strand-halt-not-implemented]],
+[[qemu-hver-never-assigned]] and [[signature-b-clean-idle-stall]] in the notes
+repo. Apply in order 0010 -> 0023 -> 0024; each is inert or worse without the
+one before it.
 
-The common thread: none of these three are things a stock or third-party
+The common thread: none of these four are things a stock or third-party
 sun4v guest/hv combination would ever hit. They surface specifically because
 this project builds its own hypervisor from source (OpenSPARC T2/Ontario) and
 runs it under QEMU rather than only running prebuilt Sun/Oracle firmware --
-anyone doing the same will need this exact set, and 0003/0010/0023 is the
+anyone doing the same will need this exact set, and 0003/0010/0023/0024 is the
 reason devel/ exists as a category separate from upstream/ at all.

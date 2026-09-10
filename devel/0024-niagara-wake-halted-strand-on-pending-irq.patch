@@ -1,0 +1,89 @@
+From e5fd9c4b1709a54ab6cd1b521b949bdf0713befd Mon Sep 17 00:00:00 2001
+From: dpim <dpim_dpim@proton.me>
+Date: Thu, 10 Sep 2026 10:15:22 +0200
+Subject: [PATCH] target/sparc: wake a halted strand on a pending interrupt,
+ not a deliverable one
+
+0023 gave the wr-form %asr26 write a real halt (cs->halted = 1) so that
+plat_halt_strand() actually idles the strand instead of spinning. But
+sparc_cpu_has_work() -- untouched upstream since 2013, and never reached
+before 0023 because nothing else sets cs->halted on SPARC64 -- only asks
+whether an interrupt is *deliverable right now*:
+
+    return cpu_test_interrupt(cs, CPU_INTERRUPT_HARD) &&
+           cpu_interrupts_enabled(cpu_env(cs));
+
+A genuinely halted strand wakes on a *pending* interrupt, not a
+deliverable one. PSTATE.IE (and, in hyperprivileged mode, HPSTATE.hpriv)
+gate whether the trap may be *taken* once the strand resumes -- not
+whether the hardware halt state may end. cpu_check_irqs() raises
+CPU_INTERRUPT_HARD only once the trap can be taken, and the halt is
+routinely entered with PSTATE.IE = 0 (an ordinary check-then-sleep idle
+loop). So a %stick tick that fires and is correctly deferred by
+cpu_check_irqs() (UA2005 table 12-3, "Conditioning of Disrupting Traps")
+in the instant before the strand halts leaves SOFTINT.STIMER set with
+nothing left to deliver it: has_work() returns false, the strand is
+never re-evaluated, and it parks forever. The one-shot %stick_cmpr is
+never re-armed because the guest's clock handler never runs, so there is
+no periodic safety net behind it either -- one such tick is fatal.
+
+Caught live and simultaneously on two independent guests: identical PC,
+halted = 1, SOFTINT = 0x10000, %stick_cmpr timer disarmed
+(expire_time == -1), zero host CPU, permanently.
+
+Fix: when cs->halted, report work if any raw source is pending -- either
+interrupt queue non-empty, pil_in set, softint set, or CPU_INTERRUPT_HARD
+already raised. The non-halted path is unchanged. cpu_exec_halt() still
+decides whether to actually leave the halt; this only has to say there is
+a reason to run.
+
+Needs 0004 (mondo-queues-asi-queue) for env->iqueue and the IQUEUE_*
+offsets, and 0023 (which is the only thing that ever halts a SPARC64
+strand). Confirmed: a >9 h idle that previously froze deterministically
+on this exact signature now stays healthy on two stacks (cmd646/IDE and
+mptsas/PCIe), SOFTINT clearing and the stick timer re-arming each tick.
+
+AI-assisted.
+---
+ target/sparc/cpu.c | 24 +++++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/target/sparc/cpu.c b/target/sparc/cpu.c
+index d2342ce98c..9fd7344788 100644
+--- a/target/sparc/cpu.c
++++ b/target/sparc/cpu.c
+@@ -785,8 +785,30 @@ static void sparc_restore_state_to_opc(CPUState *cs,
+ #ifndef CONFIG_USER_ONLY
+ static bool sparc_cpu_has_work(CPUState *cs)
+ {
++    CPUSPARCState *env = cpu_env(cs);
++
++    /*
++     * A strand halted through STRAND_STS_REG.active (the wr-form %asr26
++     * write our hypervisor's plat_halt_strand() uses, 0023) is reactivated
++     * by a *pending* interrupt, not a deliverable one. cpu_check_irqs()
++     * raises CPU_INTERRUPT_HARD only once the trap may actually be taken,
++     * and the halt is routinely entered with PSTATE.IE = 0 (an ordinary
++     * check-then-sleep idle loop) or in hyperprivileged mode, where neither
++     * condition below can pass. Without examining the raw pending sources
++     * here, a tick that fired and was correctly deferred (UA2005 table
++     * 12-3) in the instant before the halt leaves the strand parked forever
++     * with SOFTINT still set. cpu_exec_halt() decides whether to actually
++     * leave the halt; this only reports whether there is a reason to.
++     */
++    if (cs->halted) {
++        return env->iqueue[IQUEUE_CPU_HEAD] != env->iqueue[IQUEUE_CPU_TAIL] ||
++               env->iqueue[IQUEUE_DEV_HEAD] != env->iqueue[IQUEUE_DEV_TAIL] ||
++               env->pil_in != 0 || env->softint != 0 ||
++               cpu_test_interrupt(cs, CPU_INTERRUPT_HARD);
++    }
++
+     return cpu_test_interrupt(cs, CPU_INTERRUPT_HARD) &&
+-           cpu_interrupts_enabled(cpu_env(cs));
++           cpu_interrupts_enabled(env);
+ }
+ #endif /* !CONFIG_USER_ONLY */
+ 
+-- 
+2.43.0
+
