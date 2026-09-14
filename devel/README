@@ -67,7 +67,7 @@ Contents
 
 Patches this stack needs only because of our own hv
 -----------------------------------------------------
-Four patches across this stack exist because our own T2/Ontario hypervisor
+Four patches across this stack exist because our own T1/Ontario hypervisor
 build is the first thing to exercise a given upstream QEMU code path, not
 because of a generic Solaris-on-sun4v or QEMU bug. Traceable here since they
 otherwise look unrelated and are scattered across devel/ and test/:
@@ -95,7 +95,8 @@ one before it.
 
 The common thread: none of these four are things a stock or third-party
 sun4v guest/hv combination would ever hit. They surface specifically because
-this project builds its own hypervisor from source (OpenSPARC T2/Ontario) and
+this project builds its own hypervisor from source (Ontario/T1, from the
+OpenSPARC T2 archive codebase) and
 runs it under QEMU rather than only running prebuilt Sun/Oracle firmware --
 anyone doing the same will need this exact set, and 0003/0010/0023/0024 is the
 reason devel/ exists as a category separate from upstream/ at all.

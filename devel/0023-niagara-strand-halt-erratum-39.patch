@@ -23,7 +23,7 @@ the CPU version) always sees the oldest possible part and skips the
 halt outright. Giving %hver the same value as %ver makes the guard's
 mask field visible at all -- a full fix would also need UA2005's
 maxgl field, which %ver does not carry, but this is enough for our
-Ontario/T2 hv to stop tripping the guard.
+Ontario/T1 hv to stop tripping the guard.
 
 Fix, in two parts:
   - target/sparc/cpu.c: assign env->hver at reset, so the erratum #39
@@ -36,7 +36,7 @@ Fix, in two parts:
     leave the TCG loop.
 
 Tied to our own hv, not a generic Solaris/QEMU gap: found because our
-T2/Ontario hypervisor's plat_halt_strand() (hcall_cpu.s) is the first
+T1/Ontario hypervisor's plat_halt_strand() (hcall_cpu.s) is the first
 code in this project to exercise the wr-form write and the erratum #39
 guard together. Idle-strand boots hang in the hv's own
 watchdog_inf_loop without it. See devel/README, "Patches this stack
