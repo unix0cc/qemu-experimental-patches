@@ -1,0 +1,94 @@
+Verification for "target/sparc: implement TTE page-size bit 48 (Size<2>)
+for 32M/256M pages"
+
+Patch: v1 https://lore.kernel.org/qemu-devel/20260727233646.332875-1-sun4qemu@gmail.com/
+Upstream base the results below were taken on: 5f664cd37a (2026-09-13)
+
+What it shows
+-------------
+A sun4v guest that installs a 256M page gets a 64k TLB entry from an
+unpatched QEMU and hangs on the first access past it. With the patch the
+same boot goes through. Same guest, MD, RAM and inputs; only the QEMU
+binary differs.
+
+  pristine: hangs after
+      Loading: /platform/sun4v/kernel/sparcv9/unix
+    `info tlb` (Ctrl-a c) while hung:
+      DMMU Tag Access: 70000000000
+      [03] VA: 70000000000, PA: 150000000,  64k, priv, RW, unlocked, ie no, ctx 0 local
+
+  patched: boots to
+      Enter user name for system maintenance (control-d to bypass):
+    (this AI image has no console-login service; that prompt is as far
+    as it goes). `info tlb` from that session:
+      [17] VA: 600108b8000, PA: 140000000, 256M, priv, RW, unlocked, ie no, ctx 0 local
+
+The kernel asks for a 256M kmem64 page in both cases (kmdb, boot -kdv:
+kmem64_szc = 5, kmem64_base = 70000000000); only QEMU's handling differs.
+
+Raw console/monitor logs of the runs above:
+  https://unix0cc.github.io/md-artefacts/  (pagesize_256m-4096__snv_134-ai-iso__0002-v2-*)
+
+How to run it
+-------------
+  QEMU=/path/to/qemu-system-sparc64 ./verify.sh        # fetch + boot
+  ./verify.sh --fetch-only                              # fetch only
+
+At the `ok` prompt: boot
+Ctrl-a c is the QEMU monitor (`info tlb`), Ctrl-a x quits.
+
+verify.sh fetches into ./repro and checks sha256 of everything:
+
+  1up-md.bin, 1up-hv.bin   unix0cc/md, bin/pagesize_256m/4096, pinned at
+                           commit 4fa9b7b0793d; built from .pdesc source
+                           with mdgen (src/, patches/), not hand-patched
+  openboot.bin, q.bin,     Sun's originals from OpenSPARCT1_Arch.1.5.tar.bz2,
+  reset.bin, nvram1        S10image/ -- the archive docs/system/target-sparc64.rst
+                           points at. BSD+ per the hypervisor/obp source
+                           headers in the same archive.
+  osol-dev-134-ai-sparc.iso  OpenSolaris snv_134 automated-install image,
+                           https://mirror.math.princeton.edu/pub/openindiana-iso/archive/opensolaris/
+                           sha1 613ced9a2b2891b63b1b1b868d81b59e1accff07 (matches the mirror's .sha1)
+
+Why not the archive's own MD: S10image/1up-md.bin has no memory->mblock
+arcs, and any kernel from snv_134 on panics in lgrp_traverse() before it
+reaches the code that picks a kmem64 page size. The archive's disk.s10hw2
+kernel predates the large-page kmem64 path and never asks for a 256M
+page. Neither reproduces this.
+
+A/B tooling (ab/)
+-----------------
+What produced the logs above:
+
+  ab/build.sh <qemu-clone> <patch>   pristine + patched builds under ab/build/
+  ab/run.sh pristine|patched         boot with console captured (ab/logs/) and
+                                     a second monitor on a unix socket
+  ab/tlb.sh pristine|patched [tag]   `info tlb` from the running instance
+                                     via that socket
+
+Run verify.sh --fetch-only first; run.sh boots from ./repro.
+
+sun4u bit-48 probe (sun4u-bit48-probe/)
+---------------------------------------
+Whether a sun4u guest under QEMU ever sets bit 48 at all: a temporary
+log in replace_tlb_entry() (sun4u-bit48-probe.diff, on top of the
+patched build) that fires on any non-hypervisor TTE with bit 48 set.
+Ran make check-qtest-sparc64 and make check-functional-sparc64 against
+it: both pass, zero hits (check-qtest-sparc64.log,
+check-functional-sparc64.log). Expected -- the default sun4u CPU these
+suites use predates IV+ and doesn't implement Size<2> -- but not
+assumed without checking.
+
+Functional test (functional/)
+-----------------------------
+tests/functional/sparc64/test_niagara.py + the meson.build hunk: the same
+boot as verify.sh, as a QEMU functional test (Asset-cached inputs, waits
+for the maintenance-mode prompt). Passes against the patched build, times
+out against pristine. Not submitted with the patch: 1 run in 10 hits a
+pre-existing intermittent trap in OBP's loader phase ("Last Trap: Level 14
+Interrupt" right after "Loading: .../unix"), unrelated to the fix, which
+would make it flaky in CI. Run it by hand from a QEMU build dir:
+
+  PYTHONPATH=<qemu-src>/python:<qemu-src>/tests/functional \
+  QEMU_TEST_QEMU_BINARY=$PWD/qemu-system-sparc64 MESON_BUILD_ROOT=$PWD \
+  ./pyvenv/bin/python3 <qemu-src>/tests/functional/sparc64/test_niagara.py

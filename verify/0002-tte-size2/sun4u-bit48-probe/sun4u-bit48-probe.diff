@@ -1,0 +1,16 @@
+diff --git a/target/sparc/ldst_helper.c b/target/sparc/ldst_helper.c
+index 86806f4636..34dede43fb 100644
+--- a/target/sparc/ldst_helper.c
++++ b/target/sparc/ldst_helper.c
+@@ -130,6 +130,11 @@ static void replace_tlb_entry(SparcTLBEntry *tlb,
+ {
+     target_ulong mask, size, va, offset;
+ 
++    if (!cpu_has_hypervisor(env) && (tlb_tte & TTE_PGSIZE_HI_BIT)) {
++        fprintf(stderr, "INSTRUMENT: sun4u TTE with bit48 set: tte=%016"
++                PRIx64 "\n", tlb_tte);
++    }
++
+     /* flush page range if translation is valid */
+     if (TTE_IS_VALID(tlb->tte)) {
+         CPUState *cs = env_cpu(env);

@@ -1,0 +1,25 @@
+[1/10] Generating qemu-version.h with a custom command (wrapped by meson to capture output)
+/home/dpim/build/qemu-0002-v2-instr/pyvenv/bin/meson test  --no-rebuild -t 1  --num-processes 1 --print-errorlogs  --suite qtest-sparc64
+ 1/17 qtest+qtest-sparc64+slow - qemu:qtest-sparc64/qom-test               OK               1.26s   5 subtests passed
+ 2/17 qtest+qtest-sparc64+slow - qemu:qtest-sparc64/device-introspect-test OK               2.05s   6 subtests passed
+ 3/17 qtest+qtest-sparc64+slow - qemu:qtest-sparc64/cdrom-test             OK               0.60s   3 subtests passed
+ 4/17 qtest+qtest-sparc64+slow - qemu:qtest-sparc64/prom-env-test          OK               2.59s   1 subtests passed
+ 5/17 qtest+qtest-sparc64+slow - qemu:qtest-sparc64/boot-serial-test       OK               2.44s   1 subtests passed
+ 6/17 qtest+qtest-sparc64+slow - qemu:qtest-sparc64/test-hmp               OK               2.11s   5 subtests passed
+ 7/17 qtest+qtest-sparc64+slow - qemu:qtest-sparc64/qmp-cmd-test           OK               8.29s   68 subtests passed
+ 8/17 qtest+qtest-sparc64+slow - qemu:qtest-sparc64/qos-test               SKIP             0.15s
+ 9/17 qtest+qtest-sparc64 - qemu:qtest-sparc64/endianness-test             OK               0.51s   3 subtests passed
+10/17 qtest+qtest-sparc64 - qemu:qtest-sparc64/test-netfilter              OK               0.14s   4 subtests passed
+11/17 qtest+qtest-sparc64 - qemu:qtest-sparc64/test-filter-buffer          OK               0.14s   1 subtests passed
+12/17 qtest+qtest-sparc64 - qemu:qtest-sparc64/test-filter-mirror          OK               0.13s   1 subtests passed
+13/17 qtest+qtest-sparc64 - qemu:qtest-sparc64/test-filter-redirector      OK               1.66s   5 subtests passed
+14/17 qtest+qtest-sparc64 - qemu:qtest-sparc64/machine-none-test           OK               0.11s   1 subtests passed
+15/17 qtest+qtest-sparc64 - qemu:qtest-sparc64/qmp-test                    OK               1.02s   9 subtests passed
+16/17 qtest+qtest-sparc64 - qemu:qtest-sparc64/readconfig-test             OK               0.12s   1 subtests passed
+17/17 qtest+qtest-sparc64 - qemu:qtest-sparc64/netdev-socket               OK               3.10s   10 subtests passed
+
+Ok:                16  
+Fail:              0   
+Skipped:           1   
+
+Full log written to /home/dpim/build/qemu-0002-v2-instr/meson-logs/testlog.txt
