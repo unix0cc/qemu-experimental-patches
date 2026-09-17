@@ -1,19 +1,17 @@
-From e23b93359e5612461607195af80dbb6311a3be80 Mon Sep 17 00:00:00 2001
+From 7537ef83655f3a2127d24405518462db942f7d14 Mon Sep 17 00:00:00 2001
 From: dpim <sun4qemu@gmail.com>
 Date: Tue, 28 Jul 2026 01:12:24 +0200
-Subject: [PATCH v2] target/sparc: implement TTE page-size bit 48 (Size<2>) for
- 32M/256M pages
+Subject: [PATCH v2] target/sparc: implement TTE page-size for 32M/256M pages
 
-The TTE's page-size field, Size, is two bits wide:
+Currently, the TTE's page-size field, Size, is 2 bits wide:
 
     #define TTE_PGSIZE(tte)     (((tte) >> 61) & 3ULL)
 
-That is the TTE of every UltraSPARC before UltraSPARC IV+. The JPS1
-implementation supplements for UltraSPARC III and for UltraSPARC IV+
+That is the TTE of every UltraSPARC before UltraSPARC IV+.
+The JPS1 implementation supplements for UltraSPARC III and IV+
 describe the TTE word in tables F-1 and F-1-4 respectively, and differ
 in one bit:
-Before IV+ bit 48 is reserved and reads as 0, Size is two bits at
-62:61;
+Before IV+ bit 48 is reserved and reads as 0, Size is 2 bits at 62:61;
 On IV+ bit 48 is Size<2>, which "is the most significant bit of the
 page size and is concatenated with bits <62:61>"
 On T1 the same split exists, szl at 62:61 and szh at 48 (T1 Supplement,
@@ -35,7 +33,7 @@ it to two:
 
 so the third bit was dropped before it was stored.
 
-demap_tlb() duplicates the same two-bit math instead of calling
+demap_tlb() duplicates the same 2-bit math instead of calling
 TTE_PGSIZE(), so it misses bit 48 too, for a TTE from either origin.
 
 Either way 256M decodes as 64K and 32M as 8K; the guest faults on the
@@ -55,8 +53,7 @@ Signed-off-by: Dmitry Pimenov <sun4qemu@gmail.com>
 ---
 v2: reworded around the missing Size<2> bit rather than the sun4v
 conversion; no functional change. Dropped the QEMU_BUILD_BUG_ON and the
-block comments in cpu.h/ldst_helper.c documenting the bit layout --
-this thread has that -- and fixed the resulting >80-column line.
+block comments in cpu.h/ldst_helper.c documenting the bit layout.
 
 Guest is OpenSolaris snv_134 (osol-dev-134-ai-sparc.iso). Firmware is
 the S10image/ set from OpenSPARCT1_Arch.1.5.tar.bz2, which
@@ -98,9 +95,9 @@ OBP's loader phase, before the kernel runs and unrelated to this fix,
 which would make it flaky in CI.
 
  target/sparc/cpu.h         |  4 +++-
- target/sparc/ldst_helper.c |  8 ++++++--
+ target/sparc/ldst_helper.c |  9 +++++++--
  target/sparc/mmu_helper.c  | 12 ++++++++++++
- 3 files changed, 21 insertions(+), 3 deletions(-)
+ 3 files changed, 22 insertions(+), 3 deletions(-)
 
 diff --git a/target/sparc/cpu.h b/target/sparc/cpu.h
 index 31a16c2af0..1ab420d831 100644
@@ -118,7 +115,7 @@ index 31a16c2af0..1ab420d831 100644
  #define TTE_PA(tte)         ((tte) & 0x1ffffffe000ULL)
  
 diff --git a/target/sparc/ldst_helper.c b/target/sparc/ldst_helper.c
-index 4ec8799d1f..86806f4636 100644
+index 4ec8799d1f..142c1c24de 100644
 --- a/target/sparc/ldst_helper.c
 +++ b/target/sparc/ldst_helper.c
 @@ -186,7 +186,7 @@ static void demap_tlb(SparcTLBEntry *tlb, target_ulong demap_addr,
@@ -130,15 +127,16 @@ index 4ec8799d1f..86806f4636 100644
  
                  if (!compare_masked(demap_addr, tlb[i].tag, mask)) {
                      continue;
-@@ -217,7 +217,11 @@ static uint64_t sun4v_tte_to_sun4u(CPUSPARCState *env, uint64_t tag,
+@@ -217,7 +217,12 @@ static uint64_t sun4v_tte_to_sun4u(CPUSPARCState *env, uint64_t tag,
          return sun4v_tte;
      }
      sun4u_tte = TTE_PA(sun4v_tte) | (sun4v_tte & TTE_VALID_BIT);
 -    sun4u_tte |= (sun4v_tte & 3ULL) << 61; /* TTE_PGSIZE */
 +    {
 +        uint64_t pgsz = TTE_PGSIZE_UA2005(sun4v_tte);
-+        sun4u_tte |= (pgsz & 3ULL) << 61;                   /* bits 61-62 */
-+        sun4u_tte |= (pgsz & 4ULL) ? TTE_PGSIZE_HI_BIT : 0; /* bit 48 */
++        sun4u_tte |= (pgsz & 3ULL) << 61; /* TTE_PGSIZE bits 61-62 */
++        sun4u_tte |= (pgsz & 4ULL) ?
++            TTE_PGSIZE_HI_BIT : 0; /* TTE_PGSIZE bit 48 */
 +    }
      sun4u_tte |= CONVERT_BIT(sun4v_tte, TTE_NFO_BIT_UA2005, TTE_NFO_BIT);
      sun4u_tte |= CONVERT_BIT(sun4v_tte, TTE_USED_BIT_UA2005, TTE_USED_BIT);
