@@ -73,12 +73,12 @@ guest, firmware and RAM, plain `boot` at the `ok` prompt:
             "info tlb" shows 256M entries, e.g.
             [17] VA: 600108b8000, PA: 140000000, 256M, priv, RW, ...
 
-Raw console and monitor logs:
-  https://unix0cc.github.io/md-artefacts/  (pagesize_256m-4096__snv_134-ai-iso__0002-v2-*)
-The reproduction as a script (fetches firmware, MD and ISO, checks
-their hashes, boots), plus the scripts that built pristine/patched
-binaries from the same commit and diffed their boot (ab/*.sh):
-  https://github.com/unix0cc/qemu-experimental-patches/tree/50a15a0/verification/0002-tte-size2/
+Raw console and monitor logs, plus the reproduction as a script
+(fetches firmware, MD and ISO, checks their hashes, boots) and the
+scripts that built pristine/patched binaries from the same commit and
+diffed their boot (ab/*.sh):
+  https://github.com/unix0cc/qemu-experimental-patches/tree/5dab77c/verification/0002-tte-size2/
+  (logs/pristine-plain-boot-tlb.txt, logs/patched-plain-boot-tlb.txt)
 
 On sun4u the pre-extension page sizes are verified by
 make check-qtest-sparc64 and make check-functional-sparc64 (sun4u,
