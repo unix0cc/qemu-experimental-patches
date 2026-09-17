@@ -78,7 +78,7 @@ Raw console and monitor logs:
 The reproduction as a script (fetches firmware, MD and ISO, checks
 their hashes, boots), plus the scripts that built pristine/patched
 binaries from the same commit and diffed their boot (ab/*.sh):
-  https://github.com/unix0cc/qemu-experimental-patches/tree/11674a0/verify/0002-tte-size2/
+  https://github.com/unix0cc/qemu-experimental-patches/tree/50a15a0/verification/0002-tte-size2/
 
 On sun4u the pre-extension page sizes are verified by
 make check-qtest-sparc64 and make check-functional-sparc64 (sun4u,
@@ -87,12 +87,12 @@ Size<2> is exercised at all, I added a temporary log in
 replace_tlb_entry() and ran both suites again: zero hits, as expected
 -- IIi predates IV+ and doesn't implement Size<2>, so the guest
 running under it never sets bit 48 (probe and logs:
-verify/0002-tte-size2/sun4u-bit48-probe/ in the repo above). 32M/256M
+verification/0002-tte-size2/sun4u-bit48-probe/ in the repo above). 32M/256M
 on sun4u stays untested by this suite; that would need a guest
 running under Sun-UltraSparc-IV-plus.
 
 A tests/functional case for this boot (~5 min under TCG) is written --
-verify/0002-tte-size2/functional/test_niagara.py in the repo above --
+verification/0002-tte-size2/functional/test_niagara.py in the repo above --
 but not submitted: 1 run in 10 hits a pre-existing intermittent trap in
 OBP's loader phase, before the kernel runs and unrelated to this fix,
 which would make it flaky in CI.
