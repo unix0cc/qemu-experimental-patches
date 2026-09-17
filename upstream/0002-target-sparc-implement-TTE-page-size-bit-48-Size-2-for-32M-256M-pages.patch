@@ -78,7 +78,7 @@ Raw console and monitor logs:
 The reproduction as a script (fetches firmware, MD and ISO, checks
 their hashes, boots), plus the scripts that built pristine/patched
 binaries from the same commit and diffed their boot (ab/*.sh):
-  https://github.com/unix0cc/md/tree/b414e21/verify/0002-tte-size2/
+  https://github.com/unix0cc/qemu-experimental-patches/tree/11674a0/verify/0002-tte-size2/
 
 On sun4u the pre-extension page sizes are verified by
 make check-qtest-sparc64 and make check-functional-sparc64 (sun4u,
