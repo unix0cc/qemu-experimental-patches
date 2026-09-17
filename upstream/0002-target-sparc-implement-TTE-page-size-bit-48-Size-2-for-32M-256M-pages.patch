@@ -1,4 +1,4 @@
-From ce55b04d8075a7e568d409940be602f9bcdb89e8 Mon Sep 17 00:00:00 2001
+From e23b93359e5612461607195af80dbb6311a3be80 Mon Sep 17 00:00:00 2001
 From: dpim <sun4qemu@gmail.com>
 Date: Tue, 28 Jul 2026 01:12:24 +0200
 Subject: [PATCH v2] target/sparc: implement TTE page-size bit 48 (Size<2>) for
@@ -50,7 +50,7 @@ now calls TTE_PGSIZE() instead of its own copy. dump_mmu() gains 32M
 and 256M labels.
 
 Link: https://lore.kernel.org/qemu-devel/20260727233646.332875-1-sun4qemu@gmail.com/
-AI-used-for: code, analysis
+AI-used-for: code, analysis, docs
 Signed-off-by: Dmitry Pimenov <sun4qemu@gmail.com>
 ---
 v2: reworded around the missing Size<2> bit rather than the sun4v
