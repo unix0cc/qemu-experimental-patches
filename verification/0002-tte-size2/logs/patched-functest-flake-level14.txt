@@ -1,0 +1,22 @@
+2026-09-16 10:54:58,583: cpu Probing I/O buses
+2026-09-16 10:54:58,589: 
+2026-09-16 10:54:58,589: 
+2026-09-16 10:54:58,590: Sun Fire T2000, No Keyboard
+2026-09-16 10:54:58,590: Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+2026-09-16 10:54:58,591: OpenBoot 4.20.0, 4096 MB memory available, Serial #1122867.
+2026-09-16 10:54:58,591: [mo23723 obp4.20.0 #0]
+2026-09-16 10:54:58,592: Ethernet address 0:80:3:de:ad:3, Host ID: 80112233.
+2026-09-16 10:54:58,592: 
+2026-09-16 10:54:58,592: 
+2026-09-16 10:54:58,592: 
+2026-09-16 10:54:58,729: ok
+2026-09-16 10:54:58,730: boot
+2026-09-16 10:54:58,781: Boot device: vdisk  File and args:
+2026-09-16 10:54:58,792: hsfs-file-system
+2026-09-16 10:54:58,828: Loading: /platform/sun4v/boot_archive
+2026-09-16 10:55:00,468: |/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-ramdisk-root ufs-file-system
+2026-09-16 10:55:00,496: Loading: /platform/sun4v/kernel/sparcv9/unix
+2026-09-16 10:55:00,611: |
+2026-09-16 10:55:00,611: ERROR: Last Trap: Level 14 Interrupt
+2026-09-16 10:55:00,612: [Exception handlers interrupted, please file a bug]
+2026-09-16 10:55:00,612: [type 'resume' to attempt a normal recovery]

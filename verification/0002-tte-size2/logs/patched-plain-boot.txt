@@ -1,0 +1,34 @@
+Script started on 2026-09-15 21:30:01+02:00 [COMMAND="/home/dpim/build/qemu-0002-on-5f664cd37a/qemu-system-sparc64 -M niagara   -L /git/md/bin/pagesize_256m/4096 -L /git/md/fw_blobs   -nographic -serial mon:stdio -m 4096   -monitor unix:/tmp/0002-ab-patched.mon,server,nowait   -drive if=pflash,readonly=on,file=/zroot/iso/osol-dev-134-ai-sparc.iso" TERM="xterm-256color" TTY="/dev/pts/13" COLUMNS="131" LINES="42"]
+cpu Probing I/O buses
+
+
+Sun Fire T2000, No Keyboard
+Copyright 2005 Sun Microsystems, Inc.  All rights reserved.
+OpenBoot 4.20.0, 4096 MB memory available, Serial #1122867.
+[mo23723 obp4.20.0 #0]
+Ethernet address 0:80:3:de:ad:3, Host ID: 80112233.
+
+
+
+ok P8P7Q       boot
+Boot device: vdisk  File and args: 
+hsfs-file-system 
+Loading: /platform/sun4v/boot_archive
+|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-ramdisk-root ufs-file-system 
+Loading: /platform/sun4v/kernel/sparcv9/unix
+||/-\|/-\|/-\|/SunOS Release 5.11 Version snv_134 64-bit
+Copyright 1983-2010 Sun Microsystems, Inc.  All rights reserved.
+Use is subject to license terms.
+-\os-io |/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-NOTICE: Disabling watchdog as watchdog services are not available
+
+Hostname: opensolaris
+Remounting root read/write
+Probing for device nodes ...
+Preparing automated install image for use
+Requesting System Maintenance Mode
+(See /lib/svc/share/README for more information.)
+Console login service(s) cannot run
+
+Enter user name for system maintenance (control-d to bypass): ^G^GQEMU: Terminated
+
+Script done on 2026-09-15 21:36:26+02:00 [COMMAND_EXIT_CODE="0"]

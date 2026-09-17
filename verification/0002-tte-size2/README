@@ -26,8 +26,10 @@ binary differs.
 The kernel asks for a 256M kmem64 page in both cases (kmdb, boot -kdv:
 kmem64_szc = 5, kmem64_base = 70000000000); only QEMU's handling differs.
 
-Raw console/monitor logs of the runs above:
-  https://unix0cc.github.io/md-artefacts/  (pagesize_256m-4096__snv_134-ai-iso__0002-v2-*)
+Raw console/monitor logs of the runs above, in logs/:
+  pristine-plain-boot-hang.txt, pristine-plain-boot-tlb.txt
+  patched-plain-boot.txt, patched-plain-boot-tlb.txt
+  patched-functest-flake-level14.txt (the OBP loader-phase flake, see below)
 
 How to run it
 -------------
