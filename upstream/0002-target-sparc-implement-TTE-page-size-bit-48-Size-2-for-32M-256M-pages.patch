@@ -1,0 +1,178 @@
+From ce55b04d8075a7e568d409940be602f9bcdb89e8 Mon Sep 17 00:00:00 2001
+From: dpim <sun4qemu@gmail.com>
+Date: Tue, 28 Jul 2026 01:12:24 +0200
+Subject: [PATCH v2] target/sparc: implement TTE page-size bit 48 (Size<2>) for
+ 32M/256M pages
+
+The TTE's page-size field, Size, is two bits wide:
+
+    #define TTE_PGSIZE(tte)     (((tte) >> 61) & 3ULL)
+
+That is the TTE of every UltraSPARC before UltraSPARC IV+. The JPS1
+implementation supplements for UltraSPARC III and for UltraSPARC IV+
+describe the TTE word in tables F-1 and F-1-4 respectively, and differ
+in one bit:
+Before IV+ bit 48 is reserved and reads as 0, Size is two bits at
+62:61;
+On IV+ bit 48 is Size<2>, which "is the most significant bit of the
+page size and is concatenated with bits <62:61>"
+On T1 the same split exists, szl at 62:61 and szh at 48 (T1 Supplement,
+sec. 13.1.2).
+
+QEMU models parts on both sides of that change (UltraSPARC III/IIIi/IV,
+IV+, T1, T2) with the III layout: Size<2> was never implemented.
+Bit 48 gets lost in more than one place:
+
+On sun4u the raw TTE word is stored as the guest wrote it, bit 48
+included, but TTE_PGSIZE() only reads bits 62:61: the bit survives in
+the TLB, it is just never decoded.
+
+On sun4v, sun4v_tte_to_sun4u() converts the incoming three-bit code
+(cpu.h defines TTE_PGSIZE_UA2005() for it, unused until now) but masked
+it to two:
+
+    sun4u_tte |= (sun4v_tte & 3ULL) << 61; /* TTE_PGSIZE */
+
+so the third bit was dropped before it was stored.
+
+demap_tlb() duplicates the same two-bit math instead of calling
+TTE_PGSIZE(), so it misses bit 48 too, for a TTE from either origin.
+
+Either way 256M decodes as 64K and 32M as 8K; the guest faults on the
+first access past the truncated entry.
+
+This patch implements Size<2> at bit 48, where the hardware keeps it.
+
+TTE_PGSIZE() now reads bit 48 as the high bit; on parts that keep bit
+48 reserved it reads as zero, so they decode as before.
+sun4v_tte_to_sun4u() stores the full three-bit code, and demap_tlb()
+now calls TTE_PGSIZE() instead of its own copy. dump_mmu() gains 32M
+and 256M labels.
+
+Link: https://lore.kernel.org/qemu-devel/20260727233646.332875-1-sun4qemu@gmail.com/
+AI-used-for: code, analysis
+Signed-off-by: Dmitry Pimenov <sun4qemu@gmail.com>
+---
+v2: reworded around the missing Size<2> bit rather than the sun4v
+conversion; no functional change. Dropped the QEMU_BUILD_BUG_ON and the
+block comments in cpu.h/ldst_helper.c documenting the bit layout --
+this thread has that -- and fixed the resulting >80-column line.
+
+Guest is OpenSolaris snv_134 (osol-dev-134-ai-sparc.iso). Firmware is
+the S10image/ set from OpenSPARCT1_Arch.1.5.tar.bz2, which
+docs/system/target-sparc64.rst names for this machine, except the
+MD/hv-config pair (1up-md.bin, 1up-hv.bin), from the repo below. The
+archive's own config only boots disk.s10hw2, capped at 4M pages.
+
+Observed on upstream 5f664cd37a, with and without this patch -- same
+guest, firmware and RAM, plain `boot` at the `ok` prompt:
+
+  pristine: hangs after "Loading: /platform/sun4v/kernel/sparcv9/unix";
+            "info tlb" shows no 32M or 256M entry.
+  patched:  boots to "Enter user name for system maintenance";
+            "info tlb" shows 256M entries, e.g.
+            [17] VA: 600108b8000, PA: 140000000, 256M, priv, RW, ...
+
+Raw console and monitor logs:
+  https://unix0cc.github.io/md-artefacts/  (pagesize_256m-4096__snv_134-ai-iso__0002-v2-*)
+The reproduction as a script (fetches firmware, MD and ISO, checks
+their hashes, boots), plus the scripts that built pristine/patched
+binaries from the same commit and diffed their boot (ab/*.sh):
+  https://github.com/unix0cc/md/tree/b414e21/verify/0002-tte-size2/
+
+On sun4u the pre-extension page sizes are verified by
+make check-qtest-sparc64 and make check-functional-sparc64 (sun4u,
+tuxrun, migration), which pass on the patched build. To check whether
+Size<2> is exercised at all, I added a temporary log in
+replace_tlb_entry() and ran both suites again: zero hits, as expected
+-- IIi predates IV+ and doesn't implement Size<2>, so the guest
+running under it never sets bit 48 (probe and logs:
+verify/0002-tte-size2/sun4u-bit48-probe/ in the repo above). 32M/256M
+on sun4u stays untested by this suite; that would need a guest
+running under Sun-UltraSparc-IV-plus.
+
+A tests/functional case for this boot (~5 min under TCG) is written --
+verify/0002-tte-size2/functional/test_niagara.py in the repo above --
+but not submitted: 1 run in 10 hits a pre-existing intermittent trap in
+OBP's loader phase, before the kernel runs and unrelated to this fix,
+which would make it flaky in CI.
+
+ target/sparc/cpu.h         |  4 +++-
+ target/sparc/ldst_helper.c |  8 ++++++--
+ target/sparc/mmu_helper.c  | 12 ++++++++++++
+ 3 files changed, 21 insertions(+), 3 deletions(-)
+
+diff --git a/target/sparc/cpu.h b/target/sparc/cpu.h
+index 31a16c2af0..1ab420d831 100644
+--- a/target/sparc/cpu.h
++++ b/target/sparc/cpu.h
+@@ -307,7 +307,9 @@ enum {
+ #define TTE_SET_USED(tte)   ((tte) |= TTE_USED_BIT)
+ #define TTE_SET_UNUSED(tte) ((tte) &= ~TTE_USED_BIT)
+ 
+-#define TTE_PGSIZE(tte)     (((tte) >> 61) & 3ULL)
++#define TTE_PGSIZE_HI_BIT   (1ULL << 48)
++#define TTE_PGSIZE(tte)     ((((tte) >> 61) & 3ULL) | \
++                             (((tte) & TTE_PGSIZE_HI_BIT) >> 46))
+ #define TTE_PGSIZE_UA2005(tte)     ((tte) & 7ULL)
+ #define TTE_PA(tte)         ((tte) & 0x1ffffffe000ULL)
+ 
+diff --git a/target/sparc/ldst_helper.c b/target/sparc/ldst_helper.c
+index 4ec8799d1f..86806f4636 100644
+--- a/target/sparc/ldst_helper.c
++++ b/target/sparc/ldst_helper.c
+@@ -186,7 +186,7 @@ static void demap_tlb(SparcTLBEntry *tlb, target_ulong demap_addr,
+                 /* demap page
+                    will remove any entry matching VA */
+                 mask = 0xffffffffffffe000ULL;
+-                mask <<= 3 * ((tlb[i].tte >> 61) & 3);
++                mask <<= 3 * TTE_PGSIZE(tlb[i].tte);
+ 
+                 if (!compare_masked(demap_addr, tlb[i].tag, mask)) {
+                     continue;
+@@ -217,7 +217,11 @@ static uint64_t sun4v_tte_to_sun4u(CPUSPARCState *env, uint64_t tag,
+         return sun4v_tte;
+     }
+     sun4u_tte = TTE_PA(sun4v_tte) | (sun4v_tte & TTE_VALID_BIT);
+-    sun4u_tte |= (sun4v_tte & 3ULL) << 61; /* TTE_PGSIZE */
++    {
++        uint64_t pgsz = TTE_PGSIZE_UA2005(sun4v_tte);
++        sun4u_tte |= (pgsz & 3ULL) << 61;                   /* bits 61-62 */
++        sun4u_tte |= (pgsz & 4ULL) ? TTE_PGSIZE_HI_BIT : 0; /* bit 48 */
++    }
+     sun4u_tte |= CONVERT_BIT(sun4v_tte, TTE_NFO_BIT_UA2005, TTE_NFO_BIT);
+     sun4u_tte |= CONVERT_BIT(sun4v_tte, TTE_USED_BIT_UA2005, TTE_USED_BIT);
+     sun4u_tte |= CONVERT_BIT(sun4v_tte, TTE_W_OK_BIT_UA2005, TTE_W_OK_BIT);
+diff --git a/target/sparc/mmu_helper.c b/target/sparc/mmu_helper.c
+index 07ba25dfce..8544de097d 100644
+--- a/target/sparc/mmu_helper.c
++++ b/target/sparc/mmu_helper.c
+@@ -830,6 +830,12 @@ void dump_mmu(CPUSPARCState *env)
+             case 0x3:
+                 mask = "  4M";
+                 break;
++            case 0x4:
++                mask = " 32M";
++                break;
++            case 0x5:
++                mask = "256M";
++                break;
+             }
+             if (TTE_IS_VALID(env->dtlb[i].tte)) {
+                 qemu_printf("[%02u] VA: %" PRIx64 ", PA: %llx"
+@@ -869,6 +875,12 @@ void dump_mmu(CPUSPARCState *env)
+             case 0x3:
+                 mask = "  4M";
+                 break;
++            case 0x4:
++                mask = " 32M";
++                break;
++            case 0x5:
++                mask = "256M";
++                break;
+             }
+             if (TTE_IS_VALID(env->itlb[i].tte)) {
+                 qemu_printf("[%02u] VA: %" PRIx64 ", PA: %llx"
+-- 
+2.43.0
+

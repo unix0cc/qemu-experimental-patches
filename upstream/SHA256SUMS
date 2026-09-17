@@ -1,1 +1,1 @@
-c328e8e4a9a44154ea6ab62f9bcdaa4a6200316061e6314282bfe2d28f9bb7f0  0002-target-sparc-fix-sun4v-TTE-page-size-truncation-32M-256M-pages.patch
+2b75aaa2f6feace7cb13e4e6d5250ecbc0d6f5bbc36bf3ac54fd0d01ad2fddef  0002-target-sparc-implement-TTE-page-size-bit-48-Size-2-for-32M-256M-pages.patch
