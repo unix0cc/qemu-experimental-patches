@@ -55,6 +55,12 @@ v2: reworded around the missing Size<2> bit rather than the sun4v
 conversion; no functional change. Dropped the QEMU_BUILD_BUG_ON and the
 block comments in cpu.h/ldst_helper.c documenting the bit layout.
 
+This carries an AI-used-for trailer (code, analysis, docs), the
+vocabulary from Bonzini's not-yet-merged llm-usage.rst RFC; the
+policy currently in force (AGENTS.md) declines AI-assisted
+contributions outright. Sending as-is rather than silently -- happy
+to hear if that's not acceptable here.
+
 Guest is OpenSolaris snv_134 (osol-dev-134-ai-sparc.iso). Firmware is
 the S10image/ set from OpenSPARCT1_Arch.1.5.tar.bz2, which
 docs/system/target-sparc64.rst names for this machine, except the
