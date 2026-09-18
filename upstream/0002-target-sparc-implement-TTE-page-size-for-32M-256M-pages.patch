@@ -83,10 +83,10 @@ diffed their boot (ab/*.sh):
 
 On sun4u the pre-extension page sizes are verified by
 make check-qtest-sparc64 and make check-functional-sparc64 (sun4u,
-tuxrun, migration), which pass on the patched build (logs:
+tuxrun, migration), which pass on the patched build with logs:
   https://github.com/unix0cc/qemu-experimental-patches/blob/92e0997/verification/0002-tte-size2/check-qtest-sparc64.log
   https://github.com/unix0cc/qemu-experimental-patches/blob/92e0997/verification/0002-tte-size2/check-functional-sparc64.log
-). To check whether
+To check whether
 Size<2> is exercised at all, I added a temporary log in
 replace_tlb_entry() and ran both suites again: zero hits, as expected
 -- IIi predates IV+ and doesn't implement Size<2>, so the guest
