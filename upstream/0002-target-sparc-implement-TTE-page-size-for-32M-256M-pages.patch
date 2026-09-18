@@ -62,6 +62,8 @@ llm-usage.rst RFC would require it to be human-written regardless of
 any trailer. Sending as-is rather than silently -- happy to hear if
 that's not acceptable here.
 
+Happy to run more tests or provide more evidence if this isn't enough.
+
 Guest is OpenSolaris snv_134 (osol-dev-134-ai-sparc.iso). Firmware is
 the S10image/ set from OpenSPARCT1_Arch.1.5.tar.bz2, which
 docs/system/target-sparc64.rst names for this machine, except the
