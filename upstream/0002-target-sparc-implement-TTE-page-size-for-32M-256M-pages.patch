@@ -62,7 +62,9 @@ MD/hv-config pair (1up-md.bin, 1up-hv.bin), from the repo below. The
 archive's own config only boots disk.s10hw2, capped at 4M pages.
 
 Observed on upstream 5f664cd37a, with and without this patch -- same
-guest, firmware and RAM, plain `boot` at the `ok` prompt:
+guest, firmware and RAM, plain `boot` at the `ok` prompt (occasionally
+hits an unrelated, pre-existing trap in OBP's loader phase before the
+kernel runs):
 
   pristine: hangs after "Loading: /platform/sun4v/kernel/sparcv9/unix";
             "info tlb" shows no 32M or 256M entry.
@@ -75,7 +77,8 @@ Raw console and monitor logs, plus the reproduction as a script
 scripts that built pristine/patched binaries from the same commit and
 diffed their boot (ab/*.sh):
   https://github.com/unix0cc/qemu-experimental-patches/tree/5dab77c/verification/0002-tte-size2/
-  (logs/pristine-plain-boot-tlb.txt, logs/patched-plain-boot-tlb.txt)
+  https://github.com/unix0cc/qemu-experimental-patches/blob/5dab77c/verification/0002-tte-size2/logs/pristine-plain-boot-tlb.txt
+  https://github.com/unix0cc/qemu-experimental-patches/blob/5dab77c/verification/0002-tte-size2/logs/patched-plain-boot-tlb.txt
 
 On sun4u the pre-extension page sizes are verified by
 make check-qtest-sparc64 and make check-functional-sparc64 (sun4u,
@@ -87,12 +90,6 @@ running under it never sets bit 48 (probe and logs:
 verification/0002-tte-size2/sun4u-bit48-probe/ in the repo above). 32M/256M
 on sun4u stays untested by this suite; that would need a guest
 running under Sun-UltraSparc-IV-plus.
-
-A tests/functional case for this boot (~5 min under TCG) is written --
-verification/0002-tte-size2/functional/test_niagara.py in the repo above --
-but not submitted: 1 run in 10 hits a pre-existing intermittent trap in
-OBP's loader phase, before the kernel runs and unrelated to this fix,
-which would make it flaky in CI.
 
  target/sparc/cpu.h         |  4 +++-
  target/sparc/ldst_helper.c |  9 +++++++--
