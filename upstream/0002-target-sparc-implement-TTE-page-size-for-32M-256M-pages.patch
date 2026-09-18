@@ -71,14 +71,15 @@ kernel runs):
   patched:  boots to "Enter user name for system maintenance";
             "info tlb" shows 256M entries, e.g.
             [17] VA: 600108b8000, PA: 140000000, 256M, priv, RW, ...
+  Full info tlb dumps:
+    https://github.com/unix0cc/qemu-experimental-patches/blob/5dab77c/verification/0002-tte-size2/logs/pristine-plain-boot-tlb.txt
+    https://github.com/unix0cc/qemu-experimental-patches/blob/5dab77c/verification/0002-tte-size2/logs/patched-plain-boot-tlb.txt
 
 Raw console and monitor logs, plus the reproduction as a script
 (fetches firmware, MD and ISO, checks their hashes, boots) and the
 scripts that built pristine/patched binaries from the same commit and
 diffed their boot (ab/*.sh):
   https://github.com/unix0cc/qemu-experimental-patches/tree/5dab77c/verification/0002-tte-size2/
-  https://github.com/unix0cc/qemu-experimental-patches/blob/5dab77c/verification/0002-tte-size2/logs/pristine-plain-boot-tlb.txt
-  https://github.com/unix0cc/qemu-experimental-patches/blob/5dab77c/verification/0002-tte-size2/logs/patched-plain-boot-tlb.txt
 
 On sun4u the pre-extension page sizes are verified by
 make check-qtest-sparc64 and make check-functional-sparc64 (sun4u,
