@@ -1,0 +1,18 @@
+make[1]: Entering directory '/home/dpim/build/qemu-0002-on-5f664cd37a'
+[1/6] Generating qemu-version.h with a custom command (wrapped by meson to capture output)
+/home/dpim/build/qemu-0002-on-5f664cd37a/pyvenv/bin/meson test  --no-rebuild -t 1 --setup thorough  --num-processes 1 --print-errorlogs  --suite func-sparc64  --suite func-sparc64-thorough
+1/9 func-quick+func-sparc64 - qemu:func-sparc64-migration                   OK              0.45s   2 subtests passed
+2/9 func-quick+func-sparc64 - qemu:func-sparc64-empty_cpu_model             OK              0.14s   1 subtests passed
+3/9 func-quick+func-sparc64 - qemu:func-sparc64-info_usernet                OK              0.16s   1 subtests passed
+4/9 func-quick+func-sparc64 - qemu:func-sparc64-linters                     OK              1.08s   1 subtests passed
+5/9 func-quick+func-sparc64 - qemu:func-sparc64-monitor_hotplug             OK              3.47s   7 subtests passed
+6/9 func-quick+func-sparc64 - qemu:func-sparc64-version                     OK              0.16s   1 subtests passed
+7/9 func-quick+func-sparc64 - qemu:func-sparc64-vnc                         OK              0.24s   3 subtests passed
+8/9 func-thorough+func-sparc64-thorough+thorough - qemu:func-sparc64-sun4u  OK              5.19s   1 subtests passed
+9/9 func-thorough+func-sparc64-thorough+thorough - qemu:func-sparc64-tuxrun OK             11.38s   1 subtests passed
+
+Ok:                9   
+Fail:              0   
+
+Full log written to /home/dpim/build/qemu-0002-on-5f664cd37a/meson-logs/testlog-thorough.txt
+make[1]: Leaving directory '/home/dpim/build/qemu-0002-on-5f664cd37a'
