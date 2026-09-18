@@ -85,7 +85,7 @@ kernel runs):
     https://github.com/unix0cc/qemu-experimental-patches/blob/967a037/verification/0002-tte-size2/logs/patched-plain-boot-tlb.txt
 
 The reproduction as a script, verify.sh (fetches firmware, MD and
-ISO, checks their hashes, boots):
+ISO, checks their hashes, drops to the `ok` prompt -- type `boot`):
   https://github.com/unix0cc/qemu-experimental-patches/blob/967a037/verification/0002-tte-size2/verify.sh
 
 On sun4u the pre-extension page sizes are verified by
