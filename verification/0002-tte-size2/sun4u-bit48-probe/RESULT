@@ -1,0 +1,7 @@
+$ grep -c INSTRUMENT check-qtest-sparc64.log check-functional-sparc64.log
+check-qtest-sparc64.log:0
+check-functional-sparc64.log:0
+
+Zero hits: no sun4u TTE with bit 48 set was ever written via
+replace_tlb_entry() during either suite, on the default
+(TI-UltraSparc-IIi) sun4u CPU these tests use.
