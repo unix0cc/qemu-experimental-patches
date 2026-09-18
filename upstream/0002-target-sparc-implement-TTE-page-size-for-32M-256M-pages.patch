@@ -81,29 +81,31 @@ kernel runs):
             "info tlb" shows 256M entries, e.g.
             [17] VA: 600108b8000, PA: 140000000, 256M, priv, RW, ...
   Full info tlb dumps:
-    https://github.com/unix0cc/qemu-experimental-patches/blob/92e0997/verification/0002-tte-size2/logs/pristine-plain-boot-tlb.txt
-    https://github.com/unix0cc/qemu-experimental-patches/blob/92e0997/verification/0002-tte-size2/logs/patched-plain-boot-tlb.txt
+    https://github.com/unix0cc/qemu-experimental-patches/blob/967a037/verification/0002-tte-size2/logs/pristine-plain-boot-tlb.txt
+    https://github.com/unix0cc/qemu-experimental-patches/blob/967a037/verification/0002-tte-size2/logs/patched-plain-boot-tlb.txt
 
 The reproduction as a script, verify.sh (fetches firmware, MD and
 ISO, checks their hashes, boots):
-  https://github.com/unix0cc/qemu-experimental-patches/blob/92e0997/verification/0002-tte-size2/verify.sh
+  https://github.com/unix0cc/qemu-experimental-patches/blob/967a037/verification/0002-tte-size2/verify.sh
 
 On sun4u the pre-extension page sizes are verified by
 make check-qtest-sparc64 and make check-functional-sparc64 (sun4u,
 tuxrun, migration), which pass on the patched build with logs:
-  https://github.com/unix0cc/qemu-experimental-patches/blob/92e0997/verification/0002-tte-size2/check-qtest-sparc64.log
-  https://github.com/unix0cc/qemu-experimental-patches/blob/92e0997/verification/0002-tte-size2/check-functional-sparc64.log
+  https://github.com/unix0cc/qemu-experimental-patches/blob/967a037/verification/0002-tte-size2/check-qtest-sparc64.log
+  https://github.com/unix0cc/qemu-experimental-patches/blob/967a037/verification/0002-tte-size2/check-functional-sparc64.log
 To check whether
 Size<2> is exercised at all, I added a temporary log in
 replace_tlb_entry() and ran both suites again: zero hits, as expected
 -- IIi predates IV+ and doesn't implement Size<2>, so the guest
-running under it never sets bit 48. Probe and logs:
-  https://github.com/unix0cc/qemu-experimental-patches/tree/92e0997/verification/0002-tte-size2/sun4u-bit48-probe/
+running under it never sets bit 48. Result:
+  https://github.com/unix0cc/qemu-experimental-patches/blob/967a037/verification/0002-tte-size2/sun4u-bit48-probe/RESULT
+Probe and logs:
+  https://github.com/unix0cc/qemu-experimental-patches/tree/967a037/verification/0002-tte-size2/sun4u-bit48-probe/
 32M/256M on sun4u stays untested by this suite; that would need a guest
 running under Sun-UltraSparc-IV-plus.
 
 Overview of everything above (scripts, logs, README):
-  https://github.com/unix0cc/qemu-experimental-patches/blob/92e0997/verification/0002-tte-size2/README
+  https://github.com/unix0cc/qemu-experimental-patches/blob/967a037/verification/0002-tte-size2/README
 
  target/sparc/cpu.h         |  4 +++-
  target/sparc/ldst_helper.c |  9 +++++++--
