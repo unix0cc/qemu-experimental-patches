@@ -1,6 +1,6 @@
-From 97136bf19d4f7cd702acc5e8132a94e9ddbce2c9 Mon Sep 17 00:00:00 2001
+From c3fe75505c65c3aa24a9333aa4b959e6983d0fac Mon Sep 17 00:00:00 2001
 From: dpim <sun4qemu@gmail.com>
-Date: Tue, 28 Jul 2026 01:12:24 +0200
+Date: Fri, 18 Sep 2026 12:24:55 +0200
 Subject: [PATCH v2] target/sparc: implement TTE page-size for 32M/256M pages
 
 Currently, the TTE's page-size field, Size, is 2 bits wide:
