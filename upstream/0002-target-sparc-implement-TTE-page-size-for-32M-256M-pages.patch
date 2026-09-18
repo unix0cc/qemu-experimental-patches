@@ -1,4 +1,4 @@
-From 7537ef83655f3a2127d24405518462db942f7d14 Mon Sep 17 00:00:00 2001
+From 97136bf19d4f7cd702acc5e8132a94e9ddbce2c9 Mon Sep 17 00:00:00 2001
 From: dpim <sun4qemu@gmail.com>
 Date: Tue, 28 Jul 2026 01:12:24 +0200
 Subject: [PATCH v2] target/sparc: implement TTE page-size for 32M/256M pages
@@ -48,18 +48,19 @@ now calls TTE_PGSIZE() instead of its own copy. dump_mmu() gains 32M
 and 256M labels.
 
 Link: https://lore.kernel.org/qemu-devel/20260727233646.332875-1-sun4qemu@gmail.com/
-AI-used-for: code, analysis, docs
+AI-used-for: code, analysis
 Signed-off-by: Dmitry Pimenov <sun4qemu@gmail.com>
 ---
-v2: reworded around the missing Size<2> bit rather than the sun4v
-conversion; no functional change. Dropped the QEMU_BUILD_BUG_ON and the
-block comments in cpu.h/ldst_helper.c documenting the bit layout.
+v2: described behaviour across sun4u/sun4v instead of the sun4v
+conversion; no functional change. QEMU_BUILD_BUG_ON and comments in
+cpu.h/ldst_helper.c are dropped.
 
-This carries an AI-used-for trailer (code, analysis, docs), the
-vocabulary from Bonzini's not-yet-merged llm-usage.rst RFC; the
-policy currently in force (AGENTS.md) declines AI-assisted
-contributions outright. Sending as-is rather than silently -- happy
-to hear if that's not acceptable here.
+This email's text -- beyond the code and analysis the trailer above
+covers -- also had AI involvement: current policy (AGENTS.md)
+declines AI-derived content outright, and even the not-yet-merged
+llm-usage.rst RFC would require it to be human-written regardless of
+any trailer. Sending as-is rather than silently -- happy to hear if
+that's not acceptable here.
 
 Guest is OpenSolaris snv_134 (osol-dev-134-ai-sparc.iso). Firmware is
 the S10image/ set from OpenSPARCT1_Arch.1.5.tar.bz2, which
