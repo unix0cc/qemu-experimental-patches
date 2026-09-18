@@ -86,9 +86,9 @@ tuxrun, migration), which pass on the patched build. To check whether
 Size<2> is exercised at all, I added a temporary log in
 replace_tlb_entry() and ran both suites again: zero hits, as expected
 -- IIi predates IV+ and doesn't implement Size<2>, so the guest
-running under it never sets bit 48 (probe and logs:
-verification/0002-tte-size2/sun4u-bit48-probe/ in the repo above). 32M/256M
-on sun4u stays untested by this suite; that would need a guest
+running under it never sets bit 48. Probe and logs:
+  https://github.com/unix0cc/qemu-experimental-patches/tree/5dab77c/verification/0002-tte-size2/sun4u-bit48-probe/
+32M/256M on sun4u stays untested by this suite; that would need a guest
 running under Sun-UltraSparc-IV-plus.
 
  target/sparc/cpu.h         |  4 +++-
