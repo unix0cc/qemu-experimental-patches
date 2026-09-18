@@ -75,12 +75,9 @@ kernel runs):
     https://github.com/unix0cc/qemu-experimental-patches/blob/92e0997/verification/0002-tte-size2/logs/pristine-plain-boot-tlb.txt
     https://github.com/unix0cc/qemu-experimental-patches/blob/92e0997/verification/0002-tte-size2/logs/patched-plain-boot-tlb.txt
 
-Raw console and monitor logs, plus the reproduction as a script
-(fetches firmware, MD and ISO, checks their hashes, boots) and the
-scripts that built pristine/patched binaries from the same commit and
-diffed their boot:
+The reproduction as a script (fetches firmware, MD and ISO, checks
+their hashes, boots):
   https://github.com/unix0cc/qemu-experimental-patches/tree/92e0997/verification/0002-tte-size2/
-  https://github.com/unix0cc/qemu-experimental-patches/tree/92e0997/verification/0002-tte-size2/ab/
 
 On sun4u the pre-extension page sizes are verified by
 make check-qtest-sparc64 and make check-functional-sparc64 (sun4u,
